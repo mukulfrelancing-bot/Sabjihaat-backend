@@ -7,6 +7,18 @@ const cloudinary = require('cloudinary').v2;
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+// ==================== CORS CONFIGURATION ====================
+// ALLOW ALL DOMAINS FOR NOW (SABJIHAAT.IN AND LOCALHOST)
+const corsOptions = {
+    origin: ['https://sabjihaat.in', 'http://sabjihaat.in', 'http://localhost:3000', 'http://127.0.0.1:5500', 'http://localhost:5500', 'https://*.onrender.com'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
+
 
 // Middleware
 app.use(cors());
