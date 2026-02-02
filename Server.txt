@@ -1,0 +1,1073 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cloudinary = require('cloudinary').v2;
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// ==================== CORS CONFIGURATION ====================
+const allowedOrigins = [
+    'https://sabjihaat.in',
+    'http://sabjihaat.in',
+    'http://localhost:3000',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost:8080',
+    'https://*.vercel.app',
+    'https://*.onrender.com'
+];
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.some(allowedOrigin => 
+            origin === allowedOrigin || 
+            origin.startsWith(allowedOrigin.replace('*', ''))
+        )) {
+            callback(null, true);
+        } else {
+            console.log('CORS blocked for origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Cloudinary Configuration
+cloudinary.config({
+    cloud_name: 'dfbp10yxl',
+    api_key: '473227583146537',
+    api_secret: 'xEE6TKHoanFQleV_Pje6dXzBaMc'
+});
+
+// MongoDB Connection
+const MONGODB_URI = 'mongodb+srv://mukulfreelancing_db_user:DgAJ5mi*9ipJEk@cluster0.cj5xyuv.mongodb.net/sabjihaat?retryWrites=true&w=majority';
+
+mongoose.connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log('✅ MongoDB Connected Successfully'))
+.catch(err => {
+    console.error('❌ MongoDB Connection Error:', err);
+    process.exit(1);
+});
+
+// JWT Secret
+const JWT_SECRET = 'sabjihaat_secret_key_2025';
+
+// ==================== MONGOOSE SCHEMAS ====================
+// Product Schema
+const productSchema = new mongoose.Schema({
+    name: { 
+        type: String, 
+        required: [true, 'Product name is required'],
+        trim: true
+    },
+    price: { 
+        type: Number, 
+        required: [true, 'Product price is required'],
+        min: [1, 'Price must be greater than 0']
+    },
+    image: { 
+        type: String, 
+        required: [true, 'Product image is required']
+    },
+    unit: { 
+        type: String, 
+        required: [true, 'Product unit is required'],
+        enum: ['kg', 'piece', 'bunch', 'packet', 'tin', 'bottle', 'liter']
+    },
+    stock: { 
+        type: Number, 
+        default: 0,
+        min: [0, 'Stock cannot be negative']
+    },
+    category: { 
+        type: String, 
+        required: [true, 'Product category is required'],
+        enum: ['indian', 'exotic', 'leafy', 'others', 'puja']
+    },
+    cloudinaryId: { type: String },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+// Order Schema
+const orderSchema = new mongoose.Schema({
+    customerName: { type: String, required: true },
+    customerPhone: { type: String, required: true },
+    address: { type: String, required: true },
+    pincode: { type: String, required: true },
+    items: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        name: { type: String, required: true },
+        price: { type: Number, required: true },
+        quantity: { type: Number, required: true },
+        unit: { type: String, required: true }
+    }],
+    subtotal: { type: Number, required: true },
+    packagingCharge: { type: Number, default: 10 },
+    total: { type: Number, required: true },
+    orderId: { type: String, unique: true },
+    status: { 
+        type: String, 
+        default: 'pending',
+        enum: ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled']
+    },
+    paymentStatus: {
+        type: String,
+        default: 'pending',
+        enum: ['pending', '50%_paid', 'full_paid']
+    },
+    notes: { type: String },
+    createdAt: { type: Date, default: Date.now }
+});
+
+// Business Info Schema
+const businessInfoSchema = new mongoose.Schema({
+    name: { type: String, default: 'Sabji Haat' },
+    phone: { type: String, default: '+919051410591' },
+    address: { type: String, default: 'Jadavpur Sandhya Bazar Rd, West Bengal Kolkata-700075' },
+    instagram: { type: String, default: 'https://www.instagram.com/invites/contact/?utm_source=ig_contact_invite&utm_medium=copy_link&utm_content=seyxfz6' },
+    facebook: { type: String, default: 'https://www.facebook.com/sabjihaat?mibextid=ZbWKwL' },
+    googleReview: { type: String, default: 'https://maps.app.goo.gl/1DNV5UUPp2MXR81fA' },
+    packagingCharge: { type: Number, default: 10 },
+    whatsappMessage: { type: String },
+    storeHours: {
+        open: { type: String, default: '10:00' },
+        close: { type: String, default: '22:00' }
+    },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+// Admin Schema
+const adminSchema = new mongoose.Schema({
+    username: { 
+        type: String, 
+        required: true, 
+        unique: true,
+        trim: true
+    },
+    password: { 
+        type: String, 
+        required: true 
+    },
+    lastLogin: { type: Date },
+    createdAt: { type: Date, default: Date.now }
+});
+
+// Create Models
+const Product = mongoose.model('Product', productSchema);
+const Order = mongoose.model('Order', orderSchema);
+const BusinessInfo = mongoose.model('BusinessInfo', businessInfoSchema);
+const Admin = mongoose.model('Admin', adminSchema);
+
+// ==================== MIDDLEWARE ====================
+const authenticateToken = (req, res, next) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        
+        if (!token) {
+            return res.status(401).json({ 
+                success: false,
+                error: 'Access denied. No token provided.' 
+            });
+        }
+        
+        jwt.verify(token, JWT_SECRET, (err, user) => {
+            if (err) {
+                return res.status(403).json({ 
+                    success: false,
+                    error: 'Invalid or expired token.' 
+                });
+            }
+            req.user = user;
+            next();
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false,
+            error: 'Authentication error' 
+        });
+    }
+};
+
+// Error handling middleware
+const errorHandler = (err, req, res, next) => {
+    console.error('❌ Error:', err);
+    
+    let statusCode = 500;
+    let message = 'Internal server error';
+    
+    if (err.name === 'ValidationError') {
+        statusCode = 400;
+        message = Object.values(err.errors).map(e => e.message).join(', ');
+    } else if (err.name === 'MongoError' && err.code === 11000) {
+        statusCode = 400;
+        message = 'Duplicate field value entered';
+    } else if (err.name === 'JsonWebTokenError') {
+        statusCode = 401;
+        message = 'Invalid token';
+    } else if (err.message === 'Not allowed by CORS') {
+        statusCode = 403;
+        message = 'CORS Error: Origin not allowed';
+    }
+    
+    res.status(statusCode).json({
+        success: false,
+        error: message
+    });
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+const generateOrderId = () => {
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    return `ORD${dateStr}${randomNum}`;
+};
+
+const uploadToCloudinary = async (imageBase64) => {
+    try {
+        const result = await cloudinary.uploader.upload(
+            `data:image/jpeg;base64,${imageBase64}`, 
+            {
+                folder: 'sabjihaat',
+                upload_preset: 'sabji_haat',
+                resource_type: 'image',
+                transformation: [
+                    { width: 800, height: 600, crop: 'fill' },
+                    { quality: 'auto:good' }
+                ]
+            }
+        );
+        
+        return {
+            url: result.secure_url,
+            publicId: result.public_id
+        };
+    } catch (error) {
+        console.error('❌ Cloudinary upload error:', error);
+        throw new Error('Failed to upload image to Cloudinary');
+    }
+};
+
+const deleteFromCloudinary = async (publicId) => {
+    try {
+        if (!publicId) return;
+        await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+        console.error('❌ Cloudinary delete error:', error);
+    }
+};
+
+// ==================== INITIALIZE DATABASE ====================
+const initializeDatabase = async () => {
+    try {
+        console.log('🔄 Initializing database...');
+        
+        // Create admin if not exists
+        const adminCount = await Admin.countDocuments();
+        if (adminCount === 0) {
+            const hashedPassword = await bcrypt.hash('sabjihaat2025', 10);
+            await Admin.create({
+                username: 'admin',
+                password: hashedPassword
+            });
+            console.log('✅ Admin user created');
+        }
+        
+        // Create business info if not exists
+        const businessInfoCount = await BusinessInfo.countDocuments();
+        if (businessInfoCount === 0) {
+            await BusinessInfo.create({});
+            console.log('✅ Business info created');
+        }
+        
+        console.log('✅ Database initialization complete');
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+    }
+};
+
+// ==================== API ROUTES ====================
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Sabji Haat API is running',
+        timestamp: new Date().toISOString(),
+        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        version: '1.0.0'
+    });
+});
+
+// Get all products
+app.get('/api/products', async (req, res) => {
+    try {
+        const { category } = req.query;
+        const query = category ? { category } : {};
+        
+        const products = await Product.find(query)
+            .sort({ stock: -1, category: 1, name: 1 })
+            .select('-__v');
+        
+        res.json({
+            success: true,
+            count: products.length,
+            data: products
+        });
+    } catch (error) {
+        console.error('❌ Get products error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch products'
+        });
+    }
+});
+
+// Get product by ID
+app.get('/api/products/:id', async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                error: 'Product not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: product
+        });
+    } catch (error) {
+        console.error('❌ Get product error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch product'
+        });
+    }
+});
+
+// Create product (Admin only)
+app.post('/api/products', authenticateToken, async (req, res) => {
+    try {
+        const { name, price, image, unit, stock, category } = req.body;
+        
+        // Validate required fields
+        if (!name || !price || !unit || !category) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: name, price, unit, category'
+            });
+        }
+        
+        let imageUrl = image;
+        let cloudinaryId = null;
+        
+        // If image is base64, upload to Cloudinary
+        if (image && image.startsWith('data:image')) {
+            const base64Data = image.split(',')[1];
+            
+            try {
+                const uploadResult = await uploadToCloudinary(base64Data);
+                imageUrl = uploadResult.url;
+                cloudinaryId = uploadResult.publicId;
+            } catch (uploadError) {
+                console.error('❌ Cloudinary upload failed:', uploadError);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Failed to upload image'
+                });
+            }
+        }
+        
+        // Create product
+        const product = new Product({
+            name: name.trim(),
+            price: parseFloat(price),
+            image: imageUrl,
+            unit,
+            stock: stock ? parseInt(stock) : 0,
+            category,
+            cloudinaryId,
+            updatedAt: new Date()
+        });
+        
+        await product.save();
+        
+        res.status(201).json({
+            success: true,
+            message: 'Product created successfully',
+            data: product
+        });
+    } catch (error) {
+        console.error('❌ Create product error:', error);
+        
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            error: 'Failed to create product'
+        });
+    }
+});
+
+// Update product (Admin only)
+app.put('/api/products/:id', authenticateToken, async (req, res) => {
+    try {
+        const { name, price, image, unit, stock, category } = req.body;
+        
+        // Find existing product
+        const existingProduct = await Product.findById(req.params.id);
+        if (!existingProduct) {
+            return res.status(404).json({
+                success: false,
+                error: 'Product not found'
+            });
+        }
+        
+        let imageUrl = image;
+        let cloudinaryId = existingProduct.cloudinaryId;
+        
+        // If new image is provided and it's base64
+        if (image && image !== existingProduct.image && image.startsWith('data:image')) {
+            // Delete old image from Cloudinary if exists
+            if (existingProduct.cloudinaryId) {
+                await deleteFromCloudinary(existingProduct.cloudinaryId);
+            }
+            
+            // Upload new image
+            const base64Data = image.split(',')[1];
+            try {
+                const uploadResult = await uploadToCloudinary(base64Data);
+                imageUrl = uploadResult.url;
+                cloudinaryId = uploadResult.publicId;
+            } catch (uploadError) {
+                console.error('❌ Cloudinary upload failed:', uploadError);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Failed to upload new image'
+                });
+            }
+        } else if (!image || image === '') {
+            // If image is removed, delete from Cloudinary
+            if (existingProduct.cloudinaryId) {
+                await deleteFromCloudinary(existingProduct.cloudinaryId);
+                cloudinaryId = null;
+                imageUrl = 'https://images.unsplash.com/photo-1542838132-92c53300491e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80';
+            }
+        }
+        
+        // Update product
+        const updatedProduct = await Product.findByIdAndUpdate(
+            req.params.id,
+            {
+                name: name ? name.trim() : existingProduct.name,
+                price: price ? parseFloat(price) : existingProduct.price,
+                image: imageUrl,
+                unit: unit || existingProduct.unit,
+                stock: stock !== undefined ? parseInt(stock) : existingProduct.stock,
+                category: category || existingProduct.category,
+                cloudinaryId,
+                updatedAt: new Date()
+            },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+        
+        res.json({
+            success: true,
+            message: 'Product updated successfully',
+            data: updatedProduct
+        });
+    } catch (error) {
+        console.error('❌ Update product error:', error);
+        
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update product'
+        });
+    }
+});
+
+// Update stock (Admin only)
+app.put('/api/products/:id/stock', authenticateToken, async (req, res) => {
+    try {
+        const { stock } = req.body;
+        
+        if (stock === undefined || stock === null) {
+            return res.status(400).json({
+                success: false,
+                error: 'Stock quantity is required'
+            });
+        }
+        
+        const product = await Product.findByIdAndUpdate(
+            req.params.id,
+            { 
+                stock: parseInt(stock),
+                updatedAt: new Date()
+            },
+            { new: true }
+        );
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                error: 'Product not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Stock updated successfully',
+            data: product
+        });
+    } catch (error) {
+        console.error('❌ Update stock error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update stock'
+        });
+    }
+});
+
+// Delete product (Admin only)
+app.delete('/api/products/:id', authenticateToken, async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                error: 'Product not found'
+            });
+        }
+        
+        // Delete image from Cloudinary if exists
+        if (product.cloudinaryId) {
+            await deleteFromCloudinary(product.cloudinaryId);
+        }
+        
+        // Delete product from database
+        await Product.findByIdAndDelete(req.params.id);
+        
+        res.json({
+            success: true,
+            message: 'Product deleted successfully'
+        });
+    } catch (error) {
+        console.error('❌ Delete product error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete product'
+        });
+    }
+});
+
+// Create order
+app.post('/api/orders', async (req, res) => {
+    try {
+        const { customerName, customerPhone, address, pincode, items, subtotal, total } = req.body;
+        
+        // Validate required fields
+        if (!customerName || !customerPhone || !items || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: customerName, customerPhone, items'
+            });
+        }
+        
+        // Generate order ID
+        const orderId = generateOrderId();
+        
+        // Create order
+        const order = new Order({
+            customerName: customerName.trim(),
+            customerPhone: customerPhone.trim(),
+            address: address || 'Store Pickup',
+            pincode: pincode || '700075',
+            items: items.map(item => ({
+                productId: item.productId,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                unit: item.unit
+            })),
+            subtotal: parseFloat(subtotal) || 0,
+            packagingCharge: 10,
+            total: (parseFloat(total) || 0) + 10,
+            orderId,
+            status: 'pending',
+            paymentStatus: 'pending'
+        });
+        
+        await order.save();
+        
+        res.status(201).json({
+            success: true,
+            message: 'Order created successfully',
+            data: {
+                orderId: order.orderId,
+                total: order.total,
+                createdAt: order.createdAt
+            }
+        });
+    } catch (error) {
+        console.error('❌ Create order error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to create order'
+        });
+    }
+});
+
+// Get all orders (Admin only)
+app.get('/api/orders', authenticateToken, async (req, res) => {
+    try {
+        const { status, limit = 50 } = req.query;
+        const query = status ? { status } : {};
+        
+        const orders = await Order.find(query)
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .populate('items.productId', 'name image')
+            .select('-__v');
+        
+        res.json({
+            success: true,
+            count: orders.length,
+            data: orders
+        });
+    } catch (error) {
+        console.error('❌ Get orders error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch orders'
+        });
+    }
+});
+
+// Get business info
+app.get('/api/business-info', async (req, res) => {
+    try {
+        let businessInfo = await BusinessInfo.findOne();
+        
+        if (!businessInfo) {
+            businessInfo = await BusinessInfo.create({});
+        }
+        
+        res.json({
+            success: true,
+            data: businessInfo
+        });
+    } catch (error) {
+        console.error('❌ Get business info error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch business info'
+        });
+    }
+});
+
+// Update business info (Admin only)
+app.put('/api/business-info', authenticateToken, async (req, res) => {
+    try {
+        const updates = req.body;
+        
+        let businessInfo = await BusinessInfo.findOne();
+        
+        if (!businessInfo) {
+            businessInfo = new BusinessInfo(updates);
+        } else {
+            Object.keys(updates).forEach(key => {
+                if (updates[key] !== undefined) {
+                    businessInfo[key] = updates[key];
+                }
+            });
+            businessInfo.updatedAt = new Date();
+        }
+        
+        await businessInfo.save();
+        
+        res.json({
+            success: true,
+            message: 'Business info updated successfully',
+            data: businessInfo
+        });
+    } catch (error) {
+        console.error('❌ Update business info error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update business info'
+        });
+    }
+});
+
+// Admin login
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Username and password are required'
+            });
+        }
+        
+        // Find admin
+        const admin = await Admin.findOne({ username: username.trim() });
+        if (!admin) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid credentials'
+            });
+        }
+        
+        // Verify password
+        const isValidPassword = await bcrypt.compare(password, admin.password);
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid credentials'
+            });
+        }
+        
+        // Update last login
+        admin.lastLogin = new Date();
+        await admin.save();
+        
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                id: admin._id, 
+                username: admin.username 
+            }, 
+            JWT_SECRET, 
+            { expiresIn: '24h' }
+        );
+        
+        res.json({
+            success: true,
+            message: 'Login successful',
+            data: {
+                token,
+                username: admin.username,
+                lastLogin: admin.lastLogin
+            }
+        });
+    } catch (error) {
+        console.error('❌ Admin login error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Login failed'
+        });
+    }
+});
+
+// Get admin stats (Admin only)
+app.get('/api/admin/stats', authenticateToken, async (req, res) => {
+    try {
+        const [
+            totalProducts,
+            totalOrders,
+            pendingOrders,
+            outOfStockProducts
+        ] = await Promise.all([
+            Product.countDocuments(),
+            Order.countDocuments(),
+            Order.countDocuments({ status: 'pending' }),
+            Product.countDocuments({ stock: 0 })
+        ]);
+        
+        // Today's orders
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const todayOrders = await Order.countDocuments({
+            createdAt: { $gte: today }
+        });
+        
+        res.json({
+            success: true,
+            data: {
+                totalProducts,
+                totalOrders,
+                pendingOrders,
+                todayOrders,
+                outOfStockProducts
+            }
+        });
+    } catch (error) {
+        console.error('❌ Get admin stats error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch admin stats'
+        });
+    }
+});
+
+// Upload image to Cloudinary (Admin only)
+app.post('/api/upload-cloudinary', authenticateToken, async (req, res) => {
+    try {
+        const { image } = req.body;
+        
+        if (!image) {
+            return res.status(400).json({
+                success: false,
+                error: 'No image provided'
+            });
+        }
+        
+        const base64Data = image.split(',')[1];
+        const uploadResult = await uploadToCloudinary(base64Data);
+        
+        res.json({
+            success: true,
+            message: 'Image uploaded successfully',
+            data: {
+                imageUrl: uploadResult.url,
+                publicId: uploadResult.publicId
+            }
+        });
+    } catch (error) {
+        console.error('❌ Cloudinary upload error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to upload image'
+        });
+    }
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Sabji Haat Backend API</title>
+            <style>
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    max-width: 1200px; 
+                    margin: 0 auto; 
+                    padding: 30px; 
+                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                    min-height: 100vh;
+                }
+                .container { 
+                    background: white; 
+                    padding: 40px; 
+                    border-radius: 20px; 
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                    margin-top: 20px;
+                }
+                h1 { 
+                    color: #2e7d32; 
+                    margin-bottom: 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                }
+                .status { 
+                    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+                    color: white; 
+                    padding: 12px 25px; 
+                    border-radius: 8px; 
+                    display: inline-block;
+                    font-weight: bold;
+                    margin-bottom: 20px;
+                }
+                .endpoint { 
+                    background: #f8f9fa; 
+                    padding: 15px; 
+                    border-left: 4px solid #4CAF50; 
+                    margin: 15px 0; 
+                    border-radius: 4px;
+                }
+                .method { 
+                    display: inline-block; 
+                    padding: 4px 12px; 
+                    border-radius: 4px; 
+                    font-weight: bold; 
+                    margin-right: 10px; 
+                    font-size: 14px;
+                }
+                .get { background: #4CAF50; color: white; }
+                .post { background: #2196F3; color: white; }
+                .put { background: #FF9800; color: white; }
+                .delete { background: #f44336; color: white; }
+                code { 
+                    background: #f1f3f4; 
+                    padding: 2px 6px; 
+                    border-radius: 4px; 
+                    font-family: 'Courier New', monospace;
+                }
+                .stats {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    margin: 25px 0;
+                }
+                .stat-card {
+                    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+                    padding: 20px;
+                    border-radius: 10px;
+                    text-align: center;
+                    border: 1px solid #a5d6a7;
+                }
+                .stat-value {
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #2e7d32;
+                    margin-bottom: 5px;
+                }
+                .stat-label {
+                    font-size: 14px;
+                    color: #555;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>
+                    <span>🚀 Sabji Haat Backend API</span>
+                </h1>
+                <div class="status">✅ Server is running</div>
+                
+                <p><strong>API Base URL:</strong> <code>${req.protocol}://${req.get('host')}/api</code></p>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="productCount">-</div>
+                        <div class="stat-label">Total Products</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="orderCount">-</div>
+                        <div class="stat-label">Total Orders</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="adminCount">-</div>
+                        <div class="stat-label">Admin Users</div>
+                    </div>
+                </div>
+                
+                <h2>📋 Available Endpoints:</h2>
+                
+                <div class="endpoint">
+                    <span class="method get">GET</span> <code>/api/products</code>
+                    <p>Get all products (optional: ?category=indian)</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method post">POST</span> <code>/api/products</code>
+                    <p>Create new product (Admin only - requires token)</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method post">POST</span> <code>/api/admin/login</code>
+                    <p>Admin login (username: admin, password: sabjihaat2025)</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method get">GET</span> <code>/api/health</code>
+                    <p>Health check endpoint</p>
+                </div>
+                
+                <h3 style="margin-top: 30px; color: #666;">🔧 Database Status: 
+                    <span id="dbStatus" style="color: #4CAF50;">Checking...</span>
+                </h3>
+                
+                <p style="margin-top: 30px; color: #777; font-size: 14px;">
+                    <strong>Note:</strong> This backend handles product management, orders, and admin functions for Sabji Haat vegetable store.
+                </p>
+            </div>
+            
+            <script>
+                async function loadStats() {
+                    try {
+                        const healthRes = await fetch('/api/health');
+                        const healthData = await healthRes.json();
+                        
+                        document.getElementById('dbStatus').textContent = 
+                            healthData.database === 'connected' ? '✅ Connected' : '❌ Disconnected';
+                        document.getElementById('dbStatus').style.color = 
+                            healthData.database === 'connected' ? '#4CAF50' : '#f44336';
+                    } catch (error) {
+                        document.getElementById('dbStatus').textContent = '❌ Error';
+                        document.getElementById('dbStatus').style.color = '#f44336';
+                    }
+                }
+                
+                loadStats();
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// ==================== ERROR HANDLING ====================
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: `Cannot ${req.method} ${req.url}`
+    });
+});
+
+// Error handler
+app.use(errorHandler);
+
+// ==================== START SERVER ====================
+app.listen(PORT, async () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🔗 http://localhost:${PORT}`);
+    console.log(`🔗 http://localhost:${PORT}/api`);
+    
+    // Initialize database
+    await initializeDatabase();
+    
+    console.log('\n✅ API Endpoints:');
+    console.log('   GET  /api/products           - Get all products');
+    console.log('   POST /api/products           - Create product (Admin)');
+    console.log('   PUT  /api/products/:id       - Update product (Admin)');
+    console.log('   DELETE /api/products/:id     - Delete product (Admin)');
+    console.log('   POST /api/orders             - Create order');
+    console.log('   POST /api/admin/login        - Admin login');
+    console.log('   GET  /api/health             - Health check');
+    console.log('\n📱 Frontend should connect to:', `http://localhost:${PORT}/api`);
+});
