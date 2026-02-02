@@ -15,7 +15,7 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5500',
     'http://127.0.0.1:5500',
-    'http://localhost:8080',
+    'http://localhost:10000',
     'https://sabjihaat.vercel.app',
     'https://sabjihaat-backend.onrender.com'
 ];
@@ -55,7 +55,7 @@ cloudinary.config({
 });
 
 // MongoDB Connection
-const MONGODB_URI = 'mongodb+srv://mukulfreelancing_db_user:DgAJ5mi*9ipJEk@cluster0.cj5xyuv.mongodb.net/sabjihaat?retryWrites=true&w=majority';
+const MONGODB_URI = 'mongodb+srv://mukulfreelancing_db_user:DgAJ5mi%2A9ipJEk@cluster0.cj5xyuv.mongodb.net/sabjihaat?retryWrites=true&w=majority';
 
 mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true,
