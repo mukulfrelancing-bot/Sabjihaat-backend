@@ -8,9 +8,20 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: ['https://sabjihaat-frontend.vercel.app', 'http://localhost:3000'],
-    credentials: true
+    origin: [
+        'https://sabjihaat-frontend.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:5500',
+        'http://127.0.0.1:5500'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Preflight requests handle करें
+app.options('*', cors());
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -69,7 +80,7 @@ async function initializeAdmin() {
         if (adminCount === 0) {
             const defaultAdmin = new Admin({
                 username: 'admin',
-                password: 'sabjihaat2025' // In production, use bcrypt
+                password: 'sabjihaat2025'
             });
             await defaultAdmin.save();
             console.log('✅ Default admin created');
@@ -79,7 +90,7 @@ async function initializeAdmin() {
     }
 }
 
-// Simple token verification (temporary)
+// Simple token verification
 const authenticateAdmin = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -92,8 +103,8 @@ const authenticateAdmin = async (req, res, next) => {
         
         const token = authHeader.replace('Bearer ', '').trim();
         
-        // Simple check - you should use JWT in production
-        if (token === 'admin-token-2025' || token.includes('admin')) {
+        // Simple check
+        if (token === 'admin-token-2025') {
             next();
         } else {
             return res.status(401).json({ 
@@ -118,15 +129,6 @@ app.get('/api/health', (req, res) => {
         message: 'Sabji Haat Backend API is running',
         timestamp: new Date(),
         environment: process.env.NODE_ENV || 'development'
-    });
-});
-
-// Test Route
-app.get('/api/test', (req, res) => {
-    res.json({ 
-        success: true, 
-        message: 'API is working!',
-        data: { server: 'Render', status: 'active' }
     });
 });
 
@@ -189,7 +191,6 @@ app.post('/api/admin/login', async (req, res) => {
             });
         }
         
-        // For now, return a simple token
         res.json({ 
             success: true, 
             message: 'Login successful',
@@ -235,16 +236,14 @@ app.post('/api/upload-cloudinary', authenticateAdmin, async (req, res) => {
             message: 'Image uploaded successfully',
             data: {
                 imageUrl: result.secure_url,
-                cloudinaryId: result.public_id,
-                format: result.format,
-                bytes: result.bytes
+                cloudinaryId: result.public_id
             }
         });
     } catch (error) {
         console.error('❌ Cloudinary upload error:', error);
         res.status(500).json({ 
             success: false, 
-            error: 'Failed to upload image: ' + error.message 
+            error: 'Failed to upload image' 
         });
     }
 });
@@ -254,7 +253,6 @@ app.post('/api/products', authenticateAdmin, async (req, res) => {
     try {
         const { name, price, unit, category, stock, image } = req.body;
         
-        // Validate required fields
         if (!name || !price || !unit || !category || !image) {
             return res.status(400).json({ 
                 success: false, 
@@ -370,9 +368,9 @@ app.delete('/api/products/:id', authenticateAdmin, async (req, res) => {
         if (product.cloudinaryId) {
             try {
                 await cloudinary.uploader.destroy(product.cloudinaryId);
-                console.log('✅ Image deleted from Cloudinary:', product.cloudinaryId);
+                console.log('✅ Image deleted from Cloudinary');
             } catch (cloudinaryError) {
-                console.warn('⚠️ Could not delete from Cloudinary:', cloudinaryError.message);
+                console.warn('⚠️ Could not delete from Cloudinary');
             }
         }
         
@@ -437,12 +435,31 @@ app.put('/api/business-info', authenticateAdmin, async (req, res) => {
     }
 });
 
-// 404 handler
+// Root route
+app.get('/', (req, res) => {
+    res.json({
+        success: true,
+        message: '🥦 Sabji Haat Backend API',
+        version: '1.0.0',
+        endpoints: {
+            health: '/api/health',
+            products: '/api/products',
+            adminLogin: '/api/admin/login',
+            uploadImage: '/api/upload-cloudinary',
+            businessInfo: '/api/business-info'
+        },
+        frontend: 'https://sabjihaat-frontend.vercel.app',
+        documentation: 'Contact admin for API documentation'
+    });
+});
+
+// 404 handler for undefined routes
 app.use('*', (req, res) => {
     res.status(404).json({ 
         success: false, 
-        error: 'Route not found',
-        path: req.originalUrl 
+        error: 'API endpoint not found',
+        requested: req.originalUrl,
+        available: ['/api/health', '/api/products', '/api/admin/login']
     });
 });
 
@@ -451,8 +468,7 @@ app.use((err, req, res, next) => {
     console.error('Server Error:', err);
     res.status(500).json({ 
         success: false, 
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+        error: 'Internal server error'
     });
 });
 
@@ -460,9 +476,16 @@ const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, async () => {
     await initializeAdmin();
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 MongoDB: Connected`);
-    console.log(`☁️ Cloudinary: Configured`);
-    console.log(`📞 API Base URL: http://localhost:${PORT}`);
+    console.log(`
+    ========================================
+    🚀 Sabji Haat Backend Server Started
+    ========================================
+    📡 Port: ${PORT}
+    🌐 Environment: ${process.env.NODE_ENV || 'development'}
+    🔗 MongoDB: Connected
+    ☁️ Cloudinary: Configured
+    💻 Frontend: https://sabjihaat-frontend.vercel.app
+    📞 API URL: https://sabjihaat-backend.onrender.com
+    ========================================
+    `);
 });
