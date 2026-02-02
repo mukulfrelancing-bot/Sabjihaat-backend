@@ -2,7 +2,7 @@
   "name": "sabjihaat-backend",
   "version": "1.0.0",
   "description": "Sabji Haat Backend API",
-  "main": "server.js",
+  "main": "Server.js",
   "scripts": {
     "start": "node Server.js",
     "dev": "nodemon Server.js"
