@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const cloudinary = require('cloudinary').v2;
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 // ==================== CORS CONFIGURATION ====================
 const allowedOrigins = [
@@ -16,8 +16,8 @@ const allowedOrigins = [
     'http://localhost:5500',
     'http://127.0.0.1:5500',
     'http://localhost:8080',
-    'https://*.vercel.app',
-    'https://*.onrender.com'
+    'https://sabjihaat.vercel.app',
+    'https://sabjihaat-backend.onrender.com'
 ];
 
 const corsOptions = {
