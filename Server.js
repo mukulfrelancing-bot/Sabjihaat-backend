@@ -55,7 +55,7 @@ cloudinary.config({
 });
 
 // MongoDB Connection
-const MONGODB_URI = 'mongodb+srv://mukulfreelancing_db_user:DgAJ5mi*9ipJEk@cluster0.cj5xyuv.mongodb.net/sabjihaat?retryWrites=true&w=majority';
+const MONGODB_URI = 'mongodb+srv://mukulfreelancing_db_user:sabjihaat@cluster0.cj5xyuv.mongodb.net/sabjihaat?retryWrites=true&w=majority';
 
 mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true,
