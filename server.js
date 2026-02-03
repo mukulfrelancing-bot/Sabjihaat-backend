@@ -9,6 +9,8 @@ const app = express();
 // Middleware
 app.use(cors({
     origin: [
+        'https://sabjihaat.in',
+        'https://sabjihaat.vercel.app',
         'https://sabjihaat-frontend.vercel.app',
         'http://localhost:3000',
         'http://localhost:5500',
