@@ -178,42 +178,14 @@ app.get('/api/products/category/:category', async (req, res) => {
 });
 
 // Admin Login
-app.post('/api/admin/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        
-        if (!username || !password) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Username and password required' 
-            });
-        }
-        
-        // Check admin credentials
-        const admin = await Admin.findOne({ username, password });
-        if (!admin) {
-            return res.status(401).json({ 
-                success: false, 
-                error: 'Invalid credentials' 
-            });
-        }
-        
-        res.json({ 
-            success: true, 
-            message: 'Login successful',
-            data: { 
-                token: 'admin-token-2025',
-                username: admin.username 
-            } 
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            error: 'Login failed' 
-        });
-    }
-});
-
+{
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "test": "echo \"No tests specified\" && exit 0",
+    "build": "echo \"No build step required\""
+  }
+}
 // Upload image to Cloudinary (Base64)
 app.post('/api/upload-cloudinary', authenticateAdmin, async (req, res) => {
     try {
