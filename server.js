@@ -96,6 +96,8 @@ async function initializeAdmin() {
 const authenticateAdmin = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
+        console.log('Auth Header:', authHeader);
+        
         if (!authHeader) {
             return res.status(401).json({ 
                 success: false, 
@@ -104,24 +106,27 @@ const authenticateAdmin = async (req, res, next) => {
         }
         
         const token = authHeader.replace('Bearer ', '').trim();
+        console.log('Token received:', token);
         
         // Simple check
         if (token === 'admin-token-2025') {
+            console.log('Token verified');
             next();
         } else {
+            console.log('Invalid token');
             return res.status(401).json({ 
                 success: false, 
                 error: 'Invalid token' 
             });
         }
     } catch (error) {
+        console.error('Auth error:', error);
         res.status(500).json({ 
             success: false, 
             error: 'Authentication failed' 
         });
     }
 };
-
 // ==================== API ROUTES ====================
 
 // Health Check
