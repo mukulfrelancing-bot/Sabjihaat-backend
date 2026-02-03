@@ -11,7 +11,7 @@ const app = express();
 
 // ==================== CONFIGURATION ====================
 const PORT = process.env.PORT || 10000;
-const JWT_SECRET = process.env.JWT_SECRET || 'sabjihaat-2025-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'sabjihaat-2025-secret-key-change-this';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sabjihaat2025';
 
