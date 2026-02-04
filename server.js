@@ -853,7 +853,7 @@ app.use((err, req, res, next) => {
         message: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
 });
-
+autoSeedProductsIfNeeded();
 // ==================== START SERVER ====================
 app.listen(PORT, () => {
     console.log(`
