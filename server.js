@@ -4,6 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
+const seedProducts = require("./seed-products");
 const path = require('path');
 require('dotenv').config();
 
@@ -17,7 +18,41 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sabjihaat2025';
 
 // ==================== DATABASE SETUP ====================
 const db = sqlite3('sabjihaat.db', { verbose: console.log });
+function autoSeedProductsIfNeeded() {
+  const row = db.prepare("SELECT COUNT(*) AS count FROM products").get();
 
+  if (row.count >= 88) {
+    console.log("✅ Products already exist, auto-seed skipped");
+    return;
+  }
+
+  console.log("🚀 Auto seeding products...");
+
+  const insert = db.prepare(`
+    INSERT INTO products
+    (name, price, unit, category, stock, image, description, rating)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const transaction = db.transaction((items) => {
+    items.forEach(p => {
+      insert.run(
+        p.name,
+        p.price,
+        p.unit,
+        p.category,
+        p.stock,
+        p.image,
+        p.description,
+        p.rating
+      );
+    });
+  });
+
+  transaction(seedProducts);
+
+  console.log("✅ Auto seed completed");
+}
 // Initialize database tables
 function initDatabase() {
     console.log('🔄 Initializing database...');
