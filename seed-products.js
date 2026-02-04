@@ -1,5 +1,4 @@
-const Database = require("better-sqlite3");
-const db = new Database("sabjihaat.db");
+
 
 const PRODUCTS = [
 /* ========================= INDIAN VEGETABLES (17) ========================= */
@@ -95,19 +94,4 @@ const PRODUCTS = [
 { name:"Tomato Puree",price:45,unit:"packet",category:"others",stock:10,rating:4.3,image:"https://images.unsplash.com/photo-1604909053198-ecb1f91b1c9c",description:"Concentrated tomato puree for rich gravies and sauces."}
 ];
 
-const insert = db.prepare(`
-INSERT INTO products 
-(name, price, unit, category, stock, image, description, rating)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-const transaction = db.transaction((items)=>{
-  items.forEach(p=>{
-    insert.run(p.name,p.price,p.unit,p.category,p.stock,p.image,p.description,p.rating);
-  });
-});
-
-transaction(PRODUCTS);
-
-console.log(`✅ TOTAL ${PRODUCTS.length} PRODUCTS INSERTED`);
-db.close();
+module.exports = PRODUCTS;
