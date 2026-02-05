@@ -888,7 +888,7 @@ function backupDatabase() {
 }
 
 // Schedule daily backup
-setInterval(backupDatabase, 24 * 60 * 60 * 1000); // Every 24 hours
+setInterval(backupDatabase, 10 * 60 * 1000); // Every 24 hours
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
