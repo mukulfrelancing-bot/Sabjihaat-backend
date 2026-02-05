@@ -154,15 +154,8 @@ function setupNewDatabase() {
     // Add some sample products if database is empty
     const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
     if (productCount.count === 0) {
-        const sampleProducts = [
-            ['Potato', 30, 'kg', 'indian', 50, 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.5, 'Fresh potatoes from local farms'],
-            ['Onion', 40, 'kg', 'indian', 30, 'https://images.unsplash.com/photo-1580201092675-a0a6a6cafbb1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.3, 'Fresh red onions'],
-            ['Tomato', 25, 'kg', 'indian', 40, 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.7, 'Fresh tomatoes'],
-            ['Broccoli', 80, 'piece', 'exotic', 10, 'https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.8, 'Fresh broccoli'],
-            ['Spinach', 15, 'bunch', 'leafy', 20, 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.6, 'Fresh spinach leaves'],
-            ['Paneer', 200, 'kg', 'others', 15, 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.9, 'Fresh homemade paneer'],
-            ['Coconut', 25, 'piece', 'puja', 50, 'https://images.unsplash.com/photo-1564671165096-7e3d7d8a7c3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.4, 'Fresh coconut for puja']
-        ];
+        const s, 50, 'https://images.unsplash.com/photo-1564671165096-7e3d7d8a7c3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.4, 'Fresh coconut for puja']
+    
         
         const insertProduct = db.prepare(`
             INSERT INTO products (name, price, unit, category, stock, image, rating, description)
