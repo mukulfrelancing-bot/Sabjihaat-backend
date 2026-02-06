@@ -152,9 +152,6 @@ function setupNewDatabase() {
     }
     
     // Add some sample products if database is empty
-    const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
-    if (productCount.count === 0) {
-        const s, 50, 'https://images.unsplash.com/photo-1564671165096-7e3d7d8a7c3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', 4.4, 'Fresh coconut for puja']
     
         
         const insertProduct = db.prepare(`
