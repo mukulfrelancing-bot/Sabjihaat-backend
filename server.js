@@ -154,17 +154,7 @@ function setupNewDatabase() {
     // Add some sample products if database is empty
     
         
-        const insertProduct = db.prepare(`
-            INSERT INTO products (name, price, unit, category, stock, image, rating, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
         
-        sampleProducts.forEach(product => {
-            insertProduct.run(...product);
-        });
-        
-        console.log('✅ Added sample products');
-    }
     
     console.log('✅ Database initialized successfully');
 }
