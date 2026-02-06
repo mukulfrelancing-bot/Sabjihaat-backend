@@ -17,7 +17,7 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sabjihaat2025';
 
 // GitHub Configuration
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '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';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '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';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'mukulfrelancing-bot/Sabjihaat-backend';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const GITHUB_USERNAME = process.env.GITHUB_USERNAME || 'mukulfrelancing-bot';
